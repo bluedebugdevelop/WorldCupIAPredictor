@@ -143,3 +143,33 @@ Ejemplo de `POST /api/predict`:
 ```
 
 Documentación interactiva automática en <http://127.0.0.1:8000/docs>.
+
+## Despliegue (Vercel + Supabase)
+
+La app está lista para producción serverless. El backend FastAPI corre como
+función Python en Vercel, el frontend se sirve igual, y el estado en vivo
+(designaciones) se guarda en Supabase (el disco de Vercel es efímero).
+
+### 1. Supabase
+1. Crea un proyecto en <https://supabase.com>.
+2. En **SQL Editor**, ejecuta `supabase/schema.sql` (crea la tabla `kv_store`).
+3. En **Project Settings → API**, copia:
+   - `Project URL` → será `SUPABASE_URL`
+   - `service_role` key (secreta) → será `SUPABASE_SERVICE_KEY`
+
+### 2. Vercel
+1. En <https://vercel.com>, **Add New → Project → Import** el repo
+   `bluedebugdevelop/WorldCupIAPredictor`.
+2. Framework preset: **Other** (lo gobierna `vercel.json`). No hace falta build command.
+3. En **Settings → Environment Variables**, añade:
+   - `SUPABASE_URL` = la URL del proyecto
+   - `SUPABASE_SERVICE_KEY` = la service_role key
+4. **Deploy**. Vercel detecta `api/index.py` (la app ASGI) y sirve todo.
+5. El **cron** de `vercel.json` llama a `/api/refresh` cada 3 h para traer las
+   designaciones nuevas. Puedes forzarlo desde el botón «Actualizar» de la app.
+
+Cada `git push` a `main` vuelve a desplegar automáticamente.
+
+> **Local vs producción**: sin variables de Supabase, el almacén usa el fichero
+> `backend/app/data/live_overrides.json` (modo desarrollo). Con ellas, usa
+> Supabase. El mismo código sirve para ambos.

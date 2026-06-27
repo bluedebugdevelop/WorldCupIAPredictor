@@ -6,6 +6,7 @@ Sirve además el frontend estático desde ``/``.
 """
 
 import asyncio
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -56,7 +57,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
+# Ruta del frontend: por defecto relativa al backend; configurable (Vercel).
+FRONTEND_DIR = Path(os.environ.get(
+    "FRONTEND_DIR", Path(__file__).resolve().parent.parent.parent / "frontend"))
+
+# En Vercel (serverless) no hay proceso persistente: el refresco va por cron.
+IS_SERVERLESS = bool(os.environ.get("VERCEL"))
 
 
 @app.get("/api/teams")
@@ -82,15 +88,17 @@ def get_status():
     }
 
 
-@app.post("/api/refresh")
+@app.api_route("/api/refresh", methods=["GET", "POST"])
 async def refresh_now():
-    """Fuerza una actualización de designaciones desde el feed oficial."""
+    """Fuerza una actualización de designaciones (lo llama también el cron de Vercel)."""
     return await asyncio.to_thread(live_updater.refresh)
 
 
 @app.on_event("startup")
 async def _start_auto_refresh():
-    """Refresca las designaciones al arrancar y luego cada REFRESH_INTERVAL."""
+    """Refresca al arrancar y cada REFRESH_INTERVAL (solo con proceso persistente)."""
+    if IS_SERVERLESS:
+        return  # en Vercel el refresco lo dispara el cron -> /api/refresh
     async def loop():
         while True:
             try:

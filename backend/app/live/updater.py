@@ -169,11 +169,14 @@ def refresh() -> dict:
                 new_refs[rid] = new
             appointments[f"{ca}-{cb}"] = rid
 
-    data = store.load()
-    data["appointments"].update(appointments)
-    data["referees"].update(new_refs)
-    data["updated"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    store.save(data)
+    try:
+        data = store.load()
+        data["appointments"].update(appointments)
+        data["referees"].update(new_refs)
+        data["updated"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        store.save(data)
+    except Exception as ex:  # p. ej. Supabase inaccesible
+        return {"ok": False, "error": f"store: {ex}"}
     return {
         "ok": True, "updated": data["updated"],
         "appointments_found": len(appointments),

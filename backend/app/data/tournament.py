@@ -1,0 +1,262 @@
+"""Estado REAL del Mundial 2026: grupos, clasificaciones, calendario e intereses.
+
+- ``STANDINGS``: clasificación real de la fase de grupos. Los grupos A-I ya la
+  han completado (3 partidos); J, K y L disputan su última jornada hoy (27 jun),
+  por lo que figuran con 2 partidos jugados.
+- ``form_elo_delta``: ajuste de Elo por rendimiento dentro del torneo.
+- ``FIXTURES``: calendario unificado (últimos partidos de grupos + Ronda de 32)
+  con marca temporal UTC para ordenarlo cronológicamente; el front lo muestra en
+  hora de España.
+- ``team_stake`` / ``group_scenarios``: qué necesita cada equipo en la última
+  jornada (clasificado, le vale el empate, necesita ganar, eliminado...) y el
+  multiplicador de motivación que el predictor aplica.
+
+Datos de fuentes en vivo del torneo. Preparado para refrescarse desde una API.
+"""
+
+# --- Clasificaciones reales (pld, w, d, l, gf, ga, gd, pts) ---
+STANDINGS = {
+    # Grupo A-I: fase de grupos COMPLETADA (3 jugados)
+    "MEX": {"pld": 3, "w": 3, "d": 0, "l": 0, "gd": 6, "pts": 9},
+    "RSA": {"pld": 3, "w": 1, "d": 1, "l": 1, "gd": -1, "pts": 4},
+    "KOR": {"pld": 3, "w": 1, "d": 0, "l": 2, "gd": -1, "pts": 3},
+    "CZE": {"pld": 3, "w": 0, "d": 1, "l": 2, "gd": -4, "pts": 1},
+
+    "SUI": {"pld": 3, "w": 2, "d": 1, "l": 0, "gd": 4, "pts": 7},
+    "CAN": {"pld": 3, "w": 1, "d": 1, "l": 1, "gd": 5, "pts": 4},
+    "BIH": {"pld": 3, "w": 1, "d": 1, "l": 1, "gd": -1, "pts": 4},
+    "QAT": {"pld": 3, "w": 0, "d": 1, "l": 2, "gd": -8, "pts": 1},
+
+    "BRA": {"pld": 3, "w": 2, "d": 1, "l": 0, "gd": 6, "pts": 7},
+    "MAR": {"pld": 3, "w": 2, "d": 1, "l": 0, "gd": 3, "pts": 7},
+    "SCO": {"pld": 3, "w": 1, "d": 0, "l": 2, "gd": -3, "pts": 3},
+    "HAI": {"pld": 3, "w": 0, "d": 0, "l": 3, "gd": -6, "pts": 0},
+
+    "USA": {"pld": 3, "w": 2, "d": 0, "l": 1, "gd": 4, "pts": 6},
+    "AUS": {"pld": 3, "w": 1, "d": 1, "l": 1, "gd": 0, "pts": 4},
+    "PAR": {"pld": 3, "w": 1, "d": 1, "l": 1, "gd": -2, "pts": 4},
+    "TUR": {"pld": 3, "w": 1, "d": 0, "l": 2, "gd": -2, "pts": 3},
+
+    "GER": {"pld": 3, "w": 2, "d": 0, "l": 1, "gd": 6, "pts": 6},
+    "CIV": {"pld": 3, "w": 2, "d": 0, "l": 1, "gd": 2, "pts": 6},
+    "ECU": {"pld": 3, "w": 1, "d": 1, "l": 1, "gd": 0, "pts": 4},
+    "CUW": {"pld": 3, "w": 0, "d": 1, "l": 2, "gd": -8, "pts": 1},
+
+    "NED": {"pld": 3, "w": 2, "d": 1, "l": 0, "gd": 6, "pts": 7},
+    "JPN": {"pld": 3, "w": 1, "d": 2, "l": 0, "gd": 4, "pts": 5},
+    "SWE": {"pld": 3, "w": 1, "d": 1, "l": 1, "gd": 0, "pts": 4},
+    "TUN": {"pld": 3, "w": 0, "d": 0, "l": 3, "gd": -10, "pts": 0},
+
+    "BEL": {"pld": 3, "w": 1, "d": 2, "l": 0, "gd": 3, "pts": 5},
+    "EGY": {"pld": 3, "w": 1, "d": 2, "l": 0, "gd": 2, "pts": 5},
+    "IRN": {"pld": 3, "w": 1, "d": 0, "l": 2, "gd": 0, "pts": 3},
+    "NZL": {"pld": 3, "w": 0, "d": 1, "l": 2, "gd": -5, "pts": 1},
+
+    "ESP": {"pld": 3, "w": 2, "d": 1, "l": 0, "gd": 5, "pts": 7},
+    "CPV": {"pld": 3, "w": 0, "d": 3, "l": 0, "gd": 0, "pts": 3},
+    "URU": {"pld": 3, "w": 0, "d": 2, "l": 1, "gd": -1, "pts": 2},
+    "SAU": {"pld": 3, "w": 0, "d": 1, "l": 2, "gd": -4, "pts": 1},
+
+    "FRA": {"pld": 3, "w": 3, "d": 0, "l": 0, "gd": 8, "pts": 9},
+    "NOR": {"pld": 3, "w": 2, "d": 0, "l": 1, "gd": 1, "pts": 6},
+    "SEN": {"pld": 3, "w": 0, "d": 0, "l": 3, "gd": -3, "pts": 0},
+    "IRQ": {"pld": 3, "w": 0, "d": 0, "l": 3, "gd": -6, "pts": 0},
+
+    # Grupos J, K, L: 2 jugados, última jornada HOY (con gf/ga para escenarios)
+    "ARG": {"pld": 2, "w": 2, "d": 0, "l": 0, "gf": 5, "ga": 0, "gd": 5, "pts": 6},
+    "AUT": {"pld": 2, "w": 1, "d": 0, "l": 1, "gf": 3, "ga": 3, "gd": 0, "pts": 3},
+    "ALG": {"pld": 2, "w": 1, "d": 0, "l": 1, "gf": 2, "ga": 4, "gd": -2, "pts": 3},
+    "JOR": {"pld": 2, "w": 0, "d": 0, "l": 2, "gf": 2, "ga": 5, "gd": -3, "pts": 0},
+
+    "COL": {"pld": 2, "w": 2, "d": 0, "l": 0, "gf": 4, "ga": 1, "gd": 3, "pts": 6},
+    "POR": {"pld": 2, "w": 1, "d": 1, "l": 0, "gf": 6, "ga": 1, "gd": 5, "pts": 4},
+    "COD": {"pld": 2, "w": 0, "d": 1, "l": 1, "gf": 1, "ga": 2, "gd": -1, "pts": 1},
+    "UZB": {"pld": 2, "w": 0, "d": 0, "l": 2, "gf": 1, "ga": 8, "gd": -7, "pts": 0},
+
+    "ENG": {"pld": 2, "w": 1, "d": 1, "l": 0, "gf": 4, "ga": 2, "gd": 2, "pts": 4},
+    "GHA": {"pld": 2, "w": 1, "d": 1, "l": 0, "gf": 1, "ga": 0, "gd": 1, "pts": 4},
+    "CRO": {"pld": 2, "w": 1, "d": 0, "l": 1, "gf": 3, "ga": 4, "gd": -1, "pts": 3},
+    "PAN": {"pld": 2, "w": 0, "d": 0, "l": 2, "gf": 0, "ga": 2, "gd": -2, "pts": 0},
+}
+
+FORM_CAP = 120.0
+
+
+def form_elo_delta(code: str) -> float:
+    """Ajuste de Elo según el rendimiento del equipo EN el torneo."""
+    s = STANDINGS.get(code)
+    if not s or s["pld"] == 0:
+        return 0.0
+    gdpg = s["gd"] / s["pld"]
+    ppg = s["pts"] / s["pld"]
+    delta = 24.0 * gdpg + 16.0 * (ppg - 1.5)
+    return round(max(-FORM_CAP, min(FORM_CAP, delta)), 1)
+
+
+# ====================================================================
+# ESCENARIOS DE CLASIFICACIÓN (última jornada de grupos J, K, L)
+# ====================================================================
+# Emparejamientos restantes (local, visitante).
+REMAINING_PAIRINGS = {
+    "J": [("JOR", "ARG"), ("ALG", "AUT")],
+    "K": [("COL", "POR"), ("COD", "UZB")],
+    "L": [("PAN", "ENG"), ("CRO", "GHA")],
+}
+
+# Multiplicador de motivación que aplica el predictor según el interés.
+# Incluye tanto el interés por CLASIFICAR como, para los ya clasificados, el
+# interés por acabar 1º (mejor cruce en la Ronda de 32). Un equipo que ya tiene
+# el 1º asegurado tiende a reservar; uno que se juega el 1º (o clasificar) empuja.
+MOTIVATION = {
+    "Eliminado": 0.90,
+    "Necesita ganar": 1.07,
+    "Necesita ganar y depende": 1.06,
+    "Gana para ser 1º": 1.05,
+    "Gana para pelear 1º": 1.04,
+    "Pelea por clasificar": 1.04,
+    "Depende de otros": 1.02,
+    "Empate para ser 1º": 1.00,
+    "Le vale el empate": 0.99,
+    "Clasificado (2º)": 0.95,
+    "Clasificado": 0.97,
+    "1º asegurado": 0.93,
+}
+
+
+def _apply(table, match, outcome):
+    """Aplica un resultado (1/X/2) a una tabla {code:[pts,gd,gf]} en marcha."""
+    h, a = match
+    if outcome == "1":
+        table[h][0] += 3; table[h][1] += 1; table[h][2] += 1; table[a][1] -= 1
+    elif outcome == "X":
+        table[h][0] += 1; table[a][0] += 1; table[h][2] += 1; table[a][2] += 1
+    else:  # "2"
+        table[a][0] += 3; table[a][1] += 1; table[a][2] += 1; table[h][1] -= 1
+
+
+# Puntos mínimos con los que un TERCERO entra entre los 8 mejores.
+# En esta última jornada hay como mucho 7 terceros con 4 puntos (4 ya cerrados en
+# los grupos A-I + a lo sumo 1 por cada grupo vivo J/K/L) y ningún tercero puede
+# superar los 4 puntos, así que cualquier tercero con >=4 puntos entra; con <=3 se
+# queda fuera (los 8 huecos se llenan con los terceros de 4 puntos y los de 3 con
+# mejor diferencia ya cerrados).
+THIRD_PLACE_CUTOFF = 4
+
+
+def group_scenarios(group: str) -> dict:
+    """Para cada equipo del grupo, su situación de cara a la última jornada.
+
+    Considera tres niveles de interés:
+      1. Clasificar (top-2 del grupo o repesca de los 8 mejores terceros).
+      2. Para los ya clasificados, acabar 1º (mejor cruce en la Ronda de 32):
+         "1º asegurado", "Empate para ser 1º", "Gana para ser 1º"...
+    """
+    pairing = REMAINING_PAIRINGS.get(group)
+    if not pairing:
+        return {}
+    codes = [c for pair in pairing for c in pair]
+    base = {c: [STANDINGS[c]["pts"], STANDINGS[c]["gd"], STANDINGS[c].get("gf", 0)] for c in codes}
+    outcomes = ["1", "X", "2"]
+    result = {}
+    for c in codes:
+        my = next(p for p in pairing if c in p)
+        other = next(p for p in pairing if c not in p)
+        is_home = my[0] == c
+        quals, firsts = {}, {}  # resultado propio -> [por cada resultado del otro]
+        for mo in outcomes:
+            qrow, frow = [], []
+            for oo in outcomes:
+                tbl = {k: list(v) for k, v in base.items()}
+                _apply(tbl, my, mo)
+                _apply(tbl, other, oo)
+                order = sorted(tbl, key=lambda x: (tbl[x][0], tbl[x][1], tbl[x][2]), reverse=True)
+                pos = order.index(c)
+                qrow.append(pos <= 1 or (pos == 2 and tbl[c][0] >= THIRD_PLACE_CUTOFF))
+                frow.append(pos == 0)
+            quals[mo] = qrow
+            firsts[mo] = frow
+        win_o = "1" if is_home else "2"
+        loss_o = "2" if is_home else "1"
+        qw, qd, ql = quals[win_o], quals["X"], quals[loss_o]
+        fw, fd, fl = firsts[win_o], firsts["X"], firsts[loss_o]
+        if not any(qw) and not any(qd) and not any(ql):
+            st = "Eliminado"
+        elif all(qw) and all(qd) and all(ql):
+            # Clasificación asegurada: el interés pasa a ser la POSICIÓN (1º = mejor cruce).
+            if all(fw) and all(fd) and all(fl):
+                st = "1º asegurado"
+            elif all(fd):
+                st = "Empate para ser 1º"
+            elif all(fw):
+                st = "Gana para ser 1º"
+            elif any(fw) or any(fd):
+                st = "Gana para pelear 1º"
+            else:
+                st = "Clasificado (2º)"
+        elif all(qd):
+            st = "Le vale el empate"
+        elif all(qw):
+            st = "Necesita ganar"
+        elif any(qw):
+            st = "Necesita ganar y depende"
+        else:
+            st = "Depende de otros"
+        result[c] = st
+    return result
+
+
+# Escenarios precalculados por equipo (código -> estado).
+_TEAM_STAKE = {}
+for _g in REMAINING_PAIRINGS:
+    _TEAM_STAKE.update(group_scenarios(_g))
+
+
+def team_stake(code: str):
+    """Estado de clasificación del equipo, o None si su grupo ya terminó."""
+    return _TEAM_STAKE.get(code)
+
+
+def motivation_for(code: str) -> float:
+    st = team_stake(code)
+    return MOTIVATION.get(st, 1.0) if st else 1.0
+
+
+# ====================================================================
+# CALENDARIO UNIFICADO (hora en UTC para ordenar; el front muestra hora ES)
+# ====================================================================
+FIXTURES = [
+    # --- Última jornada de la fase de grupos (HOY, 27 jun) ---
+    {"phase": "Grupo L · J3", "a": "PAN", "b": "ENG", "venue": "MetLife Stadium, East Rutherford",   "utc": "2026-06-27T21:00:00Z", "ref": "aljassim"},
+    {"phase": "Grupo L · J3", "a": "CRO", "b": "GHA", "venue": "Lincoln Financial Field, Filadelfia", "utc": "2026-06-27T21:00:00Z"},
+    {"phase": "Grupo K · J3", "a": "COL", "b": "POR", "venue": "Hard Rock Stadium, Miami",            "utc": "2026-06-27T23:30:00Z", "ref": "faghani"},
+    {"phase": "Grupo K · J3", "a": "COD", "b": "UZB", "venue": "Mercedes-Benz Stadium, Atlanta",      "utc": "2026-06-27T23:30:00Z"},
+    {"phase": "Grupo J · J3", "a": "JOR", "b": "ARG", "venue": "AT&T Stadium, Arlington",             "utc": "2026-06-28T02:00:00Z", "ref": "kovacs"},
+    {"phase": "Grupo J · J3", "a": "ALG", "b": "AUT", "venue": "Arrowhead Stadium, Kansas City",      "utc": "2026-06-28T02:00:00Z"},
+
+    # --- Ronda de 32 ---
+    {"phase": "Ronda de 32 · P73", "a": "RSA", "b": "CAN",                 "venue": "SoFi Stadium, Inglewood",            "utc": "2026-06-28T19:00:00Z"},
+    {"phase": "Ronda de 32 · P76", "a": "BRA", "b": "JPN",                 "venue": "NRG Stadium, Houston",               "utc": "2026-06-29T17:00:00Z"},
+    {"phase": "Ronda de 32 · P74", "a": "GER", "b": "PAR",                 "venue": "Gillette Stadium, Foxborough",       "utc": "2026-06-29T20:30:00Z"},
+    {"phase": "Ronda de 32 · P75", "a": "NED", "b": "MAR",                 "venue": "Estadio BBVA, Guadalupe",            "utc": "2026-06-30T01:00:00Z"},
+    {"phase": "Ronda de 32 · P78", "a": "CIV", "b": "NOR",                 "venue": "AT&T Stadium, Arlington",            "utc": "2026-06-30T17:00:00Z"},
+    {"phase": "Ronda de 32 · P77", "a": "FRA", "b": "SWE",                 "venue": "MetLife Stadium, East Rutherford",   "utc": "2026-06-30T21:00:00Z"},
+    {"phase": "Ronda de 32 · P79", "a": "MEX", "b": "3º Grupo C/E",        "venue": "Estadio Azteca, Ciudad de México",   "utc": "2026-07-01T01:00:00Z"},
+    {"phase": "Ronda de 32 · P80", "a": "Ganador Grupo L", "b": "3º Grupo I/J/K", "venue": "Mercedes-Benz Stadium, Atlanta", "utc": "2026-07-01T16:00:00Z"},
+    {"phase": "Ronda de 32 · P82", "a": "BEL", "b": "3º Grupo A/I/J",      "venue": "Lumen Field, Seattle",               "utc": "2026-07-01T20:00:00Z"},
+    {"phase": "Ronda de 32 · P81", "a": "USA", "b": "BIH",                 "venue": "Levi's Stadium, Santa Clara",        "utc": "2026-07-02T00:00:00Z"},
+    {"phase": "Ronda de 32 · P84", "a": "ESP", "b": "2º Grupo J",          "venue": "SoFi Stadium, Inglewood",            "utc": "2026-07-02T19:00:00Z"},
+    {"phase": "Ronda de 32 · P83", "a": "2º Grupo K", "b": "2º Grupo L",   "venue": "BMO Field, Toronto",                 "utc": "2026-07-02T23:00:00Z"},
+    {"phase": "Ronda de 32 · P85", "a": "SUI", "b": "3º Grupo G/J",        "venue": "BC Place, Vancouver",                "utc": "2026-07-03T03:00:00Z"},
+    {"phase": "Ronda de 32 · P88", "a": "AUS", "b": "EGY",                 "venue": "AT&T Stadium, Arlington",            "utc": "2026-07-03T18:00:00Z"},
+    {"phase": "Ronda de 32 · P86", "a": "ARG", "b": "CPV",                 "venue": "Hard Rock Stadium, Miami",           "utc": "2026-07-03T22:00:00Z"},
+    {"phase": "Ronda de 32 · P87", "a": "Ganador Grupo K", "b": "3º Grupo E/I/L", "venue": "Arrowhead Stadium, Kansas City", "utc": "2026-07-04T01:30:00Z"},
+]
+
+KNOCKOUT_DATES = [
+    {"round": "Fin fase de grupos", "dates": "27 jun (hoy)"},
+    {"round": "Ronda de 32", "dates": "28 jun – 3 jul"},
+    {"round": "Octavos (R16)", "dates": "4 – 7 jul"},
+    {"round": "Cuartos", "dates": "9 – 11 jul"},
+    {"round": "Semifinales", "dates": "14 – 15 jul"},
+    {"round": "Final", "dates": "19 jul · MetLife Stadium"},
+]

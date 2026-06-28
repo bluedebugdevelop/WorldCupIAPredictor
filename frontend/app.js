@@ -250,14 +250,30 @@ async function loadGroups() {
 }
 
 /* ---------- Calendario ---------- */
-let SCHEDULE = [];
+let SCHEDULE = [], PHASES = [], CURRENT_PHASE = null, ACTIVE_PHASE = null;
 async function loadSchedule() {
   const data = await fetch(`${API}/api/schedule`).then((r) => r.json());
   SCHEDULE = data.fixtures;
-  $("roundsStrip").innerHTML = data.rounds.map(
-    (r) => `<div class="round-pill"><strong>${r.round}</strong> · <span>${r.dates}</span></div>`
-  ).join("");
+  PHASES = data.phases;
+  CURRENT_PHASE = data.current_phase;
+  // Por defecto la fase actual; si el usuario ya eligió otra válida, se respeta.
+  const present = new Set(SCHEDULE.map((f) => f.phase_key));
+  if (!ACTIVE_PHASE || !present.has(ACTIVE_PHASE)) ACTIVE_PHASE = CURRENT_PHASE;
+  renderPhaseFilter();
+  renderFixtures();
+}
 
+function renderPhaseFilter() {
+  const present = new Set(SCHEDULE.map((f) => f.phase_key));
+  $("phaseFilter").innerHTML = PHASES.filter((p) => present.has(p.key)).map((p) =>
+    `<button class="phase-chip ${p.key === ACTIVE_PHASE ? "active" : ""}" data-phase="${p.key}">
+       ${p.label}${p.key === CURRENT_PHASE ? '<span class="now-dot" title="fase actual"></span>' : ""}
+     </button>`).join("");
+  $("phaseFilter").querySelectorAll(".phase-chip").forEach((b) =>
+    b.addEventListener("click", () => { ACTIVE_PHASE = b.dataset.phase; renderPhaseFilter(); renderFixtures(); }));
+}
+
+function renderFixtures() {
   const now = Date.now();
   const fmt = (utc) => new Date(utc).toLocaleString("es-ES", {
     weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
@@ -269,22 +285,26 @@ async function loadSchedule() {
     return `<div class="fx-side ${right ? "right" : ""} ${s.code ? "" : "tbd"}">${inner}</div>`;
   };
 
-  $("fixtures").innerHTML = SCHEDULE.map((f, i) => {
+  const list = SCHEDULE.map((f, i) => ({ f, i })).filter(({ f }) => f.phase_key === ACTIVE_PHASE);
+
+  $("fixtures").innerHTML = list.map(({ f, i }) => {
     const t = new Date(f.utc).getTime();
-    const started = t < now;
+    const started = t < now && f.venue;  // solo grupos/R32 tienen hora real
     const live = started && (now - t) < 2 * 3600 * 1000;
-    const statusTxt = live ? " · en juego" : (started ? " · jugado" : "");
+    const statusTxt = f.winner ? " · finalizado" : (live ? " · en juego" : (started ? " · jugado" : ""));
     return `
       <div class="fixture ${started ? "past" : ""}">
-        <div class="fx-meta"><span class="fx-num">${f.phase}</span><span>${fmt(f.utc)}<span class="played">${statusTxt}</span></span></div>
-        <div class="fx-teams">${side(f.a, false)}<span class="fx-vs">VS</span>${side(f.b, true)}</div>
-        <div class="fx-venue"><i data-lucide="map-pin"></i> ${f.venue}</div>
-        ${f.referee ? `<div class="fx-ref"><i data-lucide="user-round"></i> ${f.referee.name} <span>(${f.referee.country} · ${f.referee.style}${f.referee.estimated ? " · est." : ""})</span></div>` : `<div class="fx-ref tbd-ref"><i data-lucide="user-round"></i> <span>árbitro por designar</span></div>`}
+        <div class="fx-meta"><span class="fx-num">${f.phase}</span><span>${f.venue ? fmt(f.utc) : ""}<span class="played">${statusTxt}</span></span></div>
+        <div class="fx-teams">${side(f.a, false)}<span class="fx-vs">${f.score || "VS"}</span>${side(f.b, true)}</div>
+        ${f.venue ? `<div class="fx-venue"><i data-lucide="map-pin"></i> ${f.venue}</div>` : ""}
+        ${f.referee
+          ? `<div class="fx-ref"><i data-lucide="user-round"></i> ${f.referee.name} <span>(${f.referee.country} · ${f.referee.style}${f.referee.estimated ? " · est." : ""})</span></div>`
+          : (f.venue ? `<div class="fx-ref tbd-ref"><i data-lucide="user-round"></i> <span>árbitro por designar</span></div>` : "")}
         <button class="fx-predict" ${f.playable ? `data-i="${i}"` : "disabled"}>
-          ${f.playable ? '<i data-lucide="sparkles"></i> Predecir este partido' : "Rival por determinar"}
+          ${f.playable ? '<i data-lucide="sparkles"></i> Predecir este partido' : "Cruce por definir"}
         </button>
       </div>`;
-  }).join("");
+  }).join("") || `<div class="fx-empty">Los cruces de esta fase se definirán según avancen los equipos.</div>`;
 
   $("fixtures").querySelectorAll(".fx-predict[data-i]").forEach((btn) =>
     btn.addEventListener("click", () => {
@@ -292,7 +312,7 @@ async function loadSchedule() {
       $("teamA").value = f.a.code;
       $("teamB").value = f.b.code;
       if (f.referee) $("referee").value = f.referee.id;
-      $("knockout").checked = f.phase.startsWith("Ronda");
+      $("knockout").checked = f.phase_key !== "grupos";
       $("neutral").checked = true;
       updateFlags(); updateRefMeta(); switchTab("predictor"); run();
       window.scrollTo({ top: 0, behavior: "smooth" });

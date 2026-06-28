@@ -7,6 +7,7 @@ Sirve además el frontend estático desde ``/``.
 
 import asyncio
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -137,9 +138,35 @@ def get_bracket():
                         "matches": by_round[r]} for r in rounds_order]}
 
 
+# Fases del torneo, en orden, y anclas de fecha para las rondas del bracket que
+# aún no tienen horario/sede asignados.
+PHASES = [
+    {"key": "grupos", "label": "Fase de grupos"},
+    {"key": "r32", "label": "Ronda de 32"},
+    {"key": "r16", "label": "Octavos"},
+    {"key": "qf", "label": "Cuartos"},
+    {"key": "sf", "label": "Semifinales"},
+    {"key": "final", "label": "Final"},
+]
+_BRACKET_PHASE = {"R16": "r16", "QF": "qf", "SF": "sf", "F": "final", "3P": "final"}
+_ROUND_UTC = {"R16": "2026-07-04T16:00:00Z", "QF": "2026-07-09T16:00:00Z",
+              "SF": "2026-07-14T18:00:00Z", "3P": "2026-07-18T18:00:00Z",
+              "F": "2026-07-19T19:00:00Z"}
+
+
+def _fixture_phase(phase_str: str) -> str:
+    if phase_str.startswith("Grupo"):
+        return "grupos"
+    return "r32"
+
+
 @app.get("/api/schedule")
 def get_schedule():
-    """Calendario unificado (grupos restantes + Ronda de 32), orden cronológico."""
+    """Calendario por fases: cada partido con su fase, orden cronológico.
+
+    Incluye grupos + Ronda de 32 (con horario/sede) y las rondas siguientes del
+    bracket (equipos según resultados). Indica la fase ACTUAL del torneo.
+    """
     def expand(side: str):
         t = TEAMS_BY_CODE.get(side)
         if not t:
@@ -152,14 +179,44 @@ def get_schedule():
         return {"id": r["id"], "name": r["name"], "country": r["country"],
                 "style": r["style"], "estimated": r.get("estimated", False)} if r else None
 
+    def brief(b):  # equipo del bracket (ya {code,name,iso}) o "Por definir"
+        return {**b, "stake": None} if b else {"label": "Por definir"}
+
+    # Grupos + Ronda de 32 (datos completos)
     fixtures = [
-        {**f, "a": expand(f["a"]), "b": expand(f["b"]),
+        {**f, "phase_key": _fixture_phase(f["phase"]),
+         "a": expand(f["a"]), "b": expand(f["b"]),
          "referee": ref_info(appointed_ref(f["a"], f["b"]) or f.get("ref")),
          "playable": f["a"] in TEAMS_BY_CODE and f["b"] in TEAMS_BY_CODE}
         for f in FIXTURES
     ]
+
+    # Rondas siguientes (Octavos -> Final) desde el bracket
+    results = live_store.load().get("results", {})
+    for m in build_bracket(results):
+        if m["round"] not in _BRACKET_PHASE:
+            continue
+        fixtures.append({
+            "phase": m["round_label"] + (" · 3.er puesto" if m["round"] == "3P" else ""),
+            "phase_key": _BRACKET_PHASE[m["round"]],
+            "utc": _ROUND_UTC[m["round"]], "venue": None, "referee": None,
+            "a": brief(m["a"]), "b": brief(m["b"]),
+            "playable": bool(m["a"] and m["b"]),
+            "score": m.get("score"), "winner": m.get("winner"),
+        })
+
     fixtures.sort(key=lambda f: f["utc"])
-    return {"fixtures": fixtures, "rounds": KNOCKOUT_DATES}
+
+    # Fase actual: la primera (en orden) con algún partido aún no jugado.
+    now = datetime.now(timezone.utc).isoformat()
+    current = PHASES[-1]["key"]
+    for ph in PHASES:
+        if any(f["phase_key"] == ph["key"] and f["utc"] > now for f in fixtures):
+            current = ph["key"]
+            break
+
+    return {"fixtures": fixtures, "phases": PHASES, "current_phase": current,
+            "rounds": KNOCKOUT_DATES}
 
 
 def _with_form(team: dict, use_form: bool) -> dict:

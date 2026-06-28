@@ -22,9 +22,28 @@ CORNERS_PG = {
     "FRA": 2.3, "GER": 2.3, "BRA": 2.3,
 }
 
+# Amarillas RECIBIDAS por partido (Mundial 2026, datos reales). Este torneo se
+# deja jugar mucho: se pitan menos faltas y se sacan pocas tarjetas.
+YELLOWS_PG = {
+    "PAR": 2.33, "HAI": 2.33, "CUW": 2.33, "BIH": 2.00, "SAU": 2.00,
+    "IRN": 2.00, "EGY": 2.00, "URU": 1.67, "AUS": 1.67, "SCO": 1.67,
+}
+
 # Medias del torneo (para regularizar muestras de solo 3 partidos).
 TOURNEY_GOALS_PG = 1.56       # goles por equipo y partido (3.12/partido)
 TOURNEY_CORNERS_PG = 3.3      # córners a favor por equipo y partido
+TOURNEY_YELLOWS_PG = 2.0      # amarillas por equipo y partido (pocas: se deja jugar)
+
+
+def yellows_pg(code: str, strength: float) -> float:
+    """Amarillas por partido que recibe la selección EN el torneo (regularizado).
+
+    Dato real si existe; si no, se estima (los equipos más débiles, más a la
+    defensiva, suelen ver más tarjetas). Se encoge hacia la media del torneo.
+    """
+    real = YELLOWS_PG.get(code)
+    base = real if real is not None else (TOURNEY_YELLOWS_PG + 0.7 * (0.5 - strength))
+    return 0.6 * base + 0.4 * TOURNEY_YELLOWS_PG
 
 
 def goals_pg(code: str) -> tuple[float, float]:

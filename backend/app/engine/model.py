@@ -15,7 +15,7 @@ import math
 from dataclasses import dataclass
 
 from ..data.teams import team_strength
-from ..data.team_stats import goals_pg, corners_pg, TOURNEY_GOALS_PG
+from ..data.team_stats import goals_pg, corners_pg, yellows_pg, TOURNEY_GOALS_PG
 
 # --- Constantes CALIBRADAS al Mundial 2026 (datos reales del torneo) ---
 # El torneo va muy goleador: ~3.12 goles/partido (vs 2.56 en 2022) y se pitan
@@ -33,6 +33,8 @@ TOURNAMENT_GOAL_WEIGHT = 0.62
 
 # Menos faltas -> menos tarjetas que la media histórica de los árbitros.
 TOURNAMENT_CARD_FACTOR = 0.78
+# Cuánto pesan las tarjetas REALES de los equipos en el torneo frente al árbitro.
+TEAM_CARD_WEIGHT = 0.58
 BASE_YELLOWS_TENSION = 1.0
 TENSION_MAX_BONUS = 0.30   # los partidos igualados generan más tarjetas
 KNOCKOUT_BONUS = 0.20      # eliminatoria: más tensión y más tarjetas
@@ -113,13 +115,20 @@ def compute_lambdas(team_a: dict, team_b: dict, referee: dict,
     lam_corners_a = corners_pg(ca, sa) * (0.55 + 0.90 * poss_a)
     lam_corners_b = corners_pg(cb, sb) * (0.55 + 0.90 * poss_b)
 
-    # --- Tarjetas: parten de la media del árbitro, escaladas al entorno de
-    #     pocas faltas del Mundial 2026, y moduladas por la tensión del partido.
-    total_yellows = referee["yellows"] * tension * TOURNAMENT_CARD_FACTOR
-    # el equipo más débil (más a la defensiva) tiende a recibir algo más
-    disc_share_a = 0.5 - 0.12 * (sa - sb)
-    lam_yellows_a = total_yellows * disc_share_a
-    lam_yellows_b = total_yellows * (1.0 - disc_share_a)
+    # --- Tarjetas: pesa MUCHO el historial real de cada equipo en este Mundial
+    #     (amarillas recibidas, en un torneo donde se deja jugar y se pitan pocas
+    #     faltas) combinado con la dureza real del árbitro; la tensión modula.
+    ty_a = yellows_pg(ca, sa)
+    ty_b = yellows_pg(cb, sb)
+    team_yellows = ty_a + ty_b                         # tendencia de ambos equipos
+    ref_yellows = referee["yellows"] * TOURNAMENT_CARD_FACTOR   # dureza del árbitro (nivel torneo)
+    wcard = TEAM_CARD_WEIGHT
+    base_yellows = wcard * team_yellows + (1 - wcard) * ref_yellows
+    tdyn = 1.0 + 0.55 * (tension - 1.0)                # tensión suavizada
+    total_yellows = base_yellows * tdyn
+    share_a = ty_a / (ty_a + ty_b)                     # cada uno según su propio registro
+    lam_yellows_a = total_yellows * share_a
+    lam_yellows_b = total_yellows * (1.0 - share_a)
 
     lam_reds = referee["reds"] * tension * TOURNAMENT_CARD_FACTOR
     lam_penalties = referee["penalties"]

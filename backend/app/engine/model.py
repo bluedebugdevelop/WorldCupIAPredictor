@@ -15,7 +15,7 @@ import math
 from dataclasses import dataclass
 
 from ..data.teams import team_strength
-from ..data.team_stats import goals_pg, corners_pg, yellows_pg, TOURNEY_GOALS_PG
+from ..data.team_stats import goals_pg, corners_match, yellows_pg, TOURNEY_GOALS_PG
 
 # --- Constantes CALIBRADAS al Mundial 2026 (datos reales del torneo) ---
 # El torneo va muy goleador: ~3.12 goles/partido (vs 2.56 en 2022) y se pitan
@@ -110,10 +110,13 @@ def compute_lambdas(team_a: dict, team_b: dict, referee: dict,
     # un equipo necesitado de ganar mete más intensidad/tarjetas
     tension += 0.5 * max(mot_a - 1.0, mot_b - 1.0, 0.0)
 
-    # --- Córners: dominan los córners REALES del equipo en el torneo, ajustados
-    #     por quién tiene más la pelota (más posesión -> más córners).
-    lam_corners_a = corners_pg(ca, sa) * (0.55 + 0.90 * poss_a)
-    lam_corners_b = corners_pg(cb, sb) * (0.55 + 0.90 * poss_b)
+    # --- Córners: el TOTAL del partido sale de los córners reales que generan los
+    #     partidos de ambas selecciones en el torneo; se reparte según quién tiene
+    #     más la pelota (más posesión -> más córners).
+    match_corners = 0.5 * (corners_match(ca, sa) + corners_match(cb, sb))
+    share_a = min(0.72, max(0.28, 0.5 + 1.45 * (poss_a - 0.5)))
+    lam_corners_a = match_corners * share_a
+    lam_corners_b = match_corners * (1.0 - share_a)
 
     # --- Tarjetas: pesa MUCHO el historial real de cada equipo en este Mundial
     #     (amarillas recibidas, en un torneo donde se deja jugar y se pitan pocas

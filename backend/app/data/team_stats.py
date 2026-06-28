@@ -13,13 +13,12 @@ feed de estadísticas (Opta/FBref) sin tocar el motor.
 
 from .tournament import STANDINGS
 
-# Córners A FAVOR por partido (Mundial 2026, datos reales; pocos por las nuevas
-# reglas). Fuente: estadísticas oficiales del torneo.
-CORNERS_PG = {
-    "CAN": 10.0, "ENG": 5.7, "BEL": 3.7, "TUR": 3.7, "NED": 3.3, "USA": 3.3,
-    "URU": 3.3, "MAR": 3.3, "SWE": 3.0, "CZE": 3.0, "EGY": 3.0, "SUI": 3.0,
-    "AUT": 3.0, "KOR": 3.0, "SEN": 3.0, "JPN": 3.0, "SCO": 2.7, "ESP": 2.7,
-    "FRA": 2.3, "GER": 2.3, "BRA": 2.3,
+# Córners TOTALES por partido en los encuentros de cada selección (Mundial 2026,
+# datos reales). Es la media de córners (ambos equipos) en sus partidos.
+CORNERS_MATCH = {
+    "TUR": 11.8, "CAN": 11.5, "BEL": 10.9, "ENG": 10.3, "GER": 10.1, "USA": 10.1,
+    "CIV": 10.0, "BIH": 10.0, "ESP": 9.1, "NED": 8.9, "FRA": 8.7, "POR": 8.3,
+    "BRA": 7.8, "MEX": 6.6, "ARG": 6.5, "AUT": 6.5,
 }
 
 # Amarillas RECIBIDAS por partido (Mundial 2026, datos reales). Este torneo se
@@ -31,7 +30,7 @@ YELLOWS_PG = {
 
 # Medias del torneo (para regularizar muestras de solo 3 partidos).
 TOURNEY_GOALS_PG = 1.56       # goles por equipo y partido (3.12/partido)
-TOURNEY_CORNERS_PG = 3.3      # córners a favor por equipo y partido
+TOURNEY_CORNERS_MATCH = 9.3   # córners totales por partido (media del torneo)
 TOURNEY_YELLOWS_PG = 2.0      # amarillas por equipo y partido (pocas: se deja jugar)
 
 
@@ -65,13 +64,12 @@ def goals_pg(code: str) -> tuple[float, float]:
     return gf / pld, ga / pld
 
 
-def corners_pg(code: str, strength: float) -> float:
-    """Córners a favor por partido: dato real del torneo si existe, regularizado.
+def corners_match(code: str, strength: float) -> float:
+    """Córners TOTALES por partido típicos de esta selección en el torneo.
 
-    Sin dato, se estima desde la pegada del equipo. Se encoge hacia la media
-    porque 3 partidos son poca muestra.
+    Dato real si existe; si no, se estima (ligeramente más en equipos con pegada).
+    Se regulariza hacia la media del torneo (3 partidos son poca muestra).
     """
-    real = CORNERS_PG.get(code)
-    base = real if real is not None else (1.6 + 3.2 * strength)
-    # 65% rendimiento propio en el torneo, 35% media (estabiliza la muestra)
-    return 0.65 * base + 0.35 * TOURNEY_CORNERS_PG
+    real = CORNERS_MATCH.get(code)
+    base = real if real is not None else (8.6 + 1.6 * strength)
+    return 0.72 * base + 0.28 * TOURNEY_CORNERS_MATCH

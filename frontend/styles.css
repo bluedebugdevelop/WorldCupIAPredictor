@@ -135,6 +135,34 @@ body {
 .form-dn { color: var(--danger); font-weight: 700; }
 .form-zero { color: var(--muted); }
 
+/* ---------- Bracket ---------- */
+.bracket-scroll { position: relative; z-index: 2; overflow-x: auto; padding: 8px clamp(18px,5vw,56px) 44px; }
+.bracket { display: flex; gap: 26px; min-width: max-content; align-items: stretch; }
+.bk-col { display: flex; flex-direction: column; justify-content: space-around; gap: 12px; min-width: 188px; }
+.bk-col-head {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--accent); text-align: center; padding-bottom: 6px; position: sticky; top: 0;
+}
+.bk-match {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 11px;
+  overflow: hidden; backdrop-filter: blur(14px);
+}
+.bk-team {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: 13px;
+  border-bottom: 1px solid var(--border); color: var(--muted);
+}
+.bk-team:last-child { border-bottom: none; }
+.bk-team.win { color: var(--text); font-weight: 700; background: rgba(0,224,164,.08); }
+.bk-team.win .bk-name { color: var(--text); }
+.bk-team.tbd { color: var(--muted); font-style: italic; opacity: .7; min-height: 35px; }
+.bk-flag { width: 20px; height: 14px; border-radius: 2px; background-size: cover;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.12); flex-shrink: 0; }
+.bk-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bk-score { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text); }
+.bk-F .bk-match { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 8px 30px rgba(0,224,164,.18); }
+.bk-F .bk-col-head, .bk-3P .bk-col-head { color: var(--warn); }
+.bk-3P { opacity: .85; }
+
 /* ---------- Calendario ---------- */
 .rounds-strip {
   position: relative; z-index: 2; display: flex; gap: 10px; flex-wrap: wrap;

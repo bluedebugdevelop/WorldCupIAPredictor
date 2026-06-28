@@ -10,14 +10,19 @@ rompe nada y conserva los overrides previos. Se ejecuta periódicamente desde el
 backend y también bajo demanda vía /api/refresh.
 """
 
+import json
 import re
 import unicodedata
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from ..data.referees import REFEREES_BY_ID
 from ..data.tournament import FIXTURES
 from . import store
+
+# TheSportsDB (API JSON gratuita): resultados reales del Mundial 2026.
+SPORTSDB_LEAGUE = "4429"
+SPORTSDB_DAY = "https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d={d}&l=" + SPORTSDB_LEAGUE
 
 # Pares de equipos (en ambos órdenes) de partidos aún por jugar de nuestro
 # calendario. Solo aceptamos designaciones de estos para evitar ruido y basura.
@@ -35,7 +40,8 @@ _TIMEOUT = 20
 TEAM_CODES = {
     "MEXICO": "MEX", "SOUTH AFRICA": "RSA", "SOUTH KOREA": "KOR", "KOREA REPUBLIC": "KOR",
     "CZECHIA": "CZE", "CZECH REPUBLIC": "CZE", "SWITZERLAND": "SUI", "CANADA": "CAN",
-    "BOSNIA AND HERZEGOVINA": "BIH", "BOSNIA": "BIH", "QATAR": "QAT", "BRAZIL": "BRA",
+    "BOSNIA AND HERZEGOVINA": "BIH", "BOSNIA HERZEGOVINA": "BIH", "BOSNIA": "BIH",
+    "QATAR": "QAT", "BRAZIL": "BRA",
     "MOROCCO": "MAR", "SCOTLAND": "SCO", "HAITI": "HAI", "UNITED STATES": "USA", "USA": "USA",
     "AUSTRALIA": "AUS", "PARAGUAY": "PAR", "TURKIYE": "TUR", "TURKEY": "TUR", "GERMANY": "GER",
     "IVORY COAST": "CIV", "COTE D IVOIRE": "CIV", "ECUADOR": "ECU", "CURACAO": "CUW",
@@ -126,10 +132,48 @@ def _match_referee(name: str, fifa: str | None):
 
 def _fetch_entries():
     req = urllib.request.Request(FEED_URL, headers={"User-Agent": "Mozilla/5.0"})
-    import json
     with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
         data = json.load(resp)
     return data.get("feed", {}).get("entry", [])
+
+
+def _team_code(name: str):
+    return TEAM_CODES.get(_norm(name).replace("-", " ").upper().strip())
+
+
+def _get_json(url: str):
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
+        return json.load(resp)
+
+
+def fetch_results() -> dict:
+    """Resultados FINALIZADOS recientes del Mundial (para avanzar el bracket).
+
+    Recorre una ventana de fechas (TheSportsDB limita los listados, pero por día
+    hay pocos partidos) y devuelve {"CODEA-CODEB": {a, b, w}} con el marcador y el
+    ganador de cada partido ya jugado.
+    """
+    results: dict[str, dict] = {}
+    today = datetime.now(timezone.utc).date()
+    for delta in range(-8, 2):  # últimos 8 días + hoy/mañana
+        day = (today + timedelta(days=delta)).isoformat()
+        try:
+            data = _get_json(SPORTSDB_DAY.format(d=day))
+        except Exception:
+            continue
+        for e in (data.get("events") or []):
+            hs, as_ = e.get("intHomeScore"), e.get("intAwayScore")
+            if hs is None or as_ is None:
+                continue
+            ca = _team_code(e.get("strHomeTeam", ""))
+            cb = _team_code(e.get("strAwayTeam", ""))
+            if not ca or not cb:
+                continue
+            hs, as_ = int(hs), int(as_)
+            w = ca if hs > as_ else (cb if as_ > hs else None)
+            results[f"{ca}-{cb}"] = {"a": hs, "b": as_, "w": w}
+    return results
 
 
 def refresh() -> dict:
@@ -170,9 +214,16 @@ def refresh() -> dict:
             appointments[f"{ca}-{cb}"] = rid
 
     try:
+        results = fetch_results()
+    except Exception:
+        results = {}
+
+    try:
         data = store.load()
         data["appointments"].update(appointments)
         data["referees"].update(new_refs)
+        if results:
+            data.setdefault("results", {}).update(results)
         data["updated"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         store.save(data)
     except Exception as ex:  # p. ej. Supabase inaccesible
@@ -181,5 +232,5 @@ def refresh() -> dict:
         "ok": True, "updated": data["updated"],
         "appointments_found": len(appointments),
         "new_referees": len(new_refs),
-        "appointments": appointments,
+        "results_found": len(results),
     }

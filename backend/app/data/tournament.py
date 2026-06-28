@@ -14,6 +14,8 @@
 Datos de fuentes en vivo del torneo. Preparado para refrescarse desde una API.
 """
 
+from .teams import TEAMS_BY_CODE
+
 # --- Clasificaciones reales (pld, w, d, l, gf, ga, gd, pts) ---
 STANDINGS = {
     # Grupo A-I: fase de grupos COMPLETADA (3 jugados)
@@ -62,21 +64,21 @@ STANDINGS = {
     "SEN": {"pld": 3, "w": 0, "d": 0, "l": 3, "gd": -3, "pts": 0},
     "IRQ": {"pld": 3, "w": 0, "d": 0, "l": 3, "gd": -6, "pts": 0},
 
-    # Grupos J, K, L: 2 jugados, última jornada HOY (con gf/ga para escenarios)
-    "ARG": {"pld": 2, "w": 2, "d": 0, "l": 0, "gf": 5, "ga": 0, "gd": 5, "pts": 6},
-    "AUT": {"pld": 2, "w": 1, "d": 0, "l": 1, "gf": 3, "ga": 3, "gd": 0, "pts": 3},
-    "ALG": {"pld": 2, "w": 1, "d": 0, "l": 1, "gf": 2, "ga": 4, "gd": -2, "pts": 3},
-    "JOR": {"pld": 2, "w": 0, "d": 0, "l": 2, "gf": 2, "ga": 5, "gd": -3, "pts": 0},
+    # Grupos J, K, L: FINALES (3 jugados) tras la última jornada.
+    "ARG": {"pld": 3, "w": 3, "d": 0, "l": 0, "gf": 8, "ga": 1, "gd": 7, "pts": 9},
+    "AUT": {"pld": 3, "w": 1, "d": 1, "l": 1, "gf": 6, "ga": 6, "gd": 0, "pts": 4},
+    "ALG": {"pld": 3, "w": 1, "d": 1, "l": 1, "gf": 5, "ga": 7, "gd": -2, "pts": 4},
+    "JOR": {"pld": 3, "w": 0, "d": 0, "l": 3, "gf": 3, "ga": 8, "gd": -5, "pts": 0},
 
-    "COL": {"pld": 2, "w": 2, "d": 0, "l": 0, "gf": 4, "ga": 1, "gd": 3, "pts": 6},
-    "POR": {"pld": 2, "w": 1, "d": 1, "l": 0, "gf": 6, "ga": 1, "gd": 5, "pts": 4},
-    "COD": {"pld": 2, "w": 0, "d": 1, "l": 1, "gf": 1, "ga": 2, "gd": -1, "pts": 1},
-    "UZB": {"pld": 2, "w": 0, "d": 0, "l": 2, "gf": 1, "ga": 8, "gd": -7, "pts": 0},
+    "COL": {"pld": 3, "w": 2, "d": 1, "l": 0, "gf": 4, "ga": 1, "gd": 3, "pts": 7},
+    "POR": {"pld": 3, "w": 1, "d": 2, "l": 0, "gf": 6, "ga": 1, "gd": 5, "pts": 5},
+    "COD": {"pld": 3, "w": 1, "d": 1, "l": 1, "gf": 4, "ga": 3, "gd": 1, "pts": 4},
+    "UZB": {"pld": 3, "w": 0, "d": 0, "l": 3, "gf": 2, "ga": 11, "gd": -9, "pts": 0},
 
-    "ENG": {"pld": 2, "w": 1, "d": 1, "l": 0, "gf": 4, "ga": 2, "gd": 2, "pts": 4},
-    "GHA": {"pld": 2, "w": 1, "d": 1, "l": 0, "gf": 1, "ga": 0, "gd": 1, "pts": 4},
-    "CRO": {"pld": 2, "w": 1, "d": 0, "l": 1, "gf": 3, "ga": 4, "gd": -1, "pts": 3},
-    "PAN": {"pld": 2, "w": 0, "d": 0, "l": 2, "gf": 0, "ga": 2, "gd": -2, "pts": 0},
+    "ENG": {"pld": 3, "w": 2, "d": 1, "l": 0, "gf": 6, "ga": 2, "gd": 4, "pts": 7},
+    "CRO": {"pld": 3, "w": 2, "d": 0, "l": 1, "gf": 5, "ga": 5, "gd": 0, "pts": 6},
+    "GHA": {"pld": 3, "w": 1, "d": 1, "l": 1, "gf": 2, "ga": 2, "gd": 0, "pts": 4},
+    "PAN": {"pld": 3, "w": 0, "d": 0, "l": 3, "gf": 0, "ga": 4, "gd": -4, "pts": 0},
 }
 
 # La forma EN el Mundial pesa mucho: coeficientes altos y tope amplio para que
@@ -98,12 +100,9 @@ def form_elo_delta(code: str) -> float:
 # ====================================================================
 # ESCENARIOS DE CLASIFICACIÓN (última jornada de grupos J, K, L)
 # ====================================================================
-# Emparejamientos restantes (local, visitante).
-REMAINING_PAIRINGS = {
-    "J": [("JOR", "ARG"), ("ALG", "AUT")],
-    "K": [("COL", "POR"), ("COD", "UZB")],
-    "L": [("PAN", "ENG"), ("CRO", "GHA")],
-}
+# Emparejamientos restantes (local, visitante). La fase de grupos ya terminó,
+# así que no quedan partidos: los intereses dejan de aplicarse.
+REMAINING_PAIRINGS = {}
 
 # Multiplicador de motivación que aplica el predictor según el interés.
 # Incluye tanto el interés por CLASIFICAR como, para los ya clasificados, el
@@ -242,23 +241,139 @@ FIXTURES = [
     {"phase": "Ronda de 32 · P75", "a": "NED", "b": "MAR",                 "venue": "Estadio BBVA, Guadalupe",            "utc": "2026-06-30T01:00:00Z"},
     {"phase": "Ronda de 32 · P78", "a": "CIV", "b": "NOR",                 "venue": "AT&T Stadium, Arlington",            "utc": "2026-06-30T17:00:00Z"},
     {"phase": "Ronda de 32 · P77", "a": "FRA", "b": "SWE",                 "venue": "MetLife Stadium, East Rutherford",   "utc": "2026-06-30T21:00:00Z"},
-    {"phase": "Ronda de 32 · P79", "a": "MEX", "b": "3º Grupo C/E",        "venue": "Estadio Azteca, Ciudad de México",   "utc": "2026-07-01T01:00:00Z"},
-    {"phase": "Ronda de 32 · P80", "a": "Ganador Grupo L", "b": "3º Grupo I/J/K", "venue": "Mercedes-Benz Stadium, Atlanta", "utc": "2026-07-01T16:00:00Z"},
-    {"phase": "Ronda de 32 · P82", "a": "BEL", "b": "3º Grupo A/I/J",      "venue": "Lumen Field, Seattle",               "utc": "2026-07-01T20:00:00Z"},
+    {"phase": "Ronda de 32 · P79", "a": "MEX", "b": "ECU",                 "venue": "Estadio Azteca, Ciudad de México",   "utc": "2026-07-01T01:00:00Z"},
+    {"phase": "Ronda de 32 · P80", "a": "ENG", "b": "COD",                 "venue": "Mercedes-Benz Stadium, Atlanta",     "utc": "2026-07-01T16:00:00Z"},
+    {"phase": "Ronda de 32 · P82", "a": "BEL", "b": "SEN",                 "venue": "Lumen Field, Seattle",               "utc": "2026-07-01T20:00:00Z"},
     {"phase": "Ronda de 32 · P81", "a": "USA", "b": "BIH",                 "venue": "Levi's Stadium, Santa Clara",        "utc": "2026-07-02T00:00:00Z"},
-    {"phase": "Ronda de 32 · P84", "a": "ESP", "b": "2º Grupo J",          "venue": "SoFi Stadium, Inglewood",            "utc": "2026-07-02T19:00:00Z"},
-    {"phase": "Ronda de 32 · P83", "a": "2º Grupo K", "b": "2º Grupo L",   "venue": "BMO Field, Toronto",                 "utc": "2026-07-02T23:00:00Z"},
-    {"phase": "Ronda de 32 · P85", "a": "SUI", "b": "3º Grupo G/J",        "venue": "BC Place, Vancouver",                "utc": "2026-07-03T03:00:00Z"},
+    {"phase": "Ronda de 32 · P84", "a": "ESP", "b": "AUT",                 "venue": "SoFi Stadium, Inglewood",            "utc": "2026-07-02T19:00:00Z"},
+    {"phase": "Ronda de 32 · P83", "a": "POR", "b": "CRO",                 "venue": "BMO Field, Toronto",                 "utc": "2026-07-02T23:00:00Z"},
+    {"phase": "Ronda de 32 · P85", "a": "SUI", "b": "ALG",                 "venue": "BC Place, Vancouver",                "utc": "2026-07-03T03:00:00Z"},
     {"phase": "Ronda de 32 · P88", "a": "AUS", "b": "EGY",                 "venue": "AT&T Stadium, Arlington",            "utc": "2026-07-03T18:00:00Z"},
     {"phase": "Ronda de 32 · P86", "a": "ARG", "b": "CPV",                 "venue": "Hard Rock Stadium, Miami",           "utc": "2026-07-03T22:00:00Z"},
-    {"phase": "Ronda de 32 · P87", "a": "Ganador Grupo K", "b": "3º Grupo E/I/L", "venue": "Arrowhead Stadium, Kansas City", "utc": "2026-07-04T01:30:00Z"},
+    {"phase": "Ronda de 32 · P87", "a": "COL", "b": "GHA",                 "venue": "Arrowhead Stadium, Kansas City",     "utc": "2026-07-04T01:30:00Z"},
 ]
 
 KNOCKOUT_DATES = [
-    {"round": "Fin fase de grupos", "dates": "27 jun (hoy)"},
+    {"round": "Fin fase de grupos", "dates": "27 jun"},
     {"round": "Ronda de 32", "dates": "28 jun – 3 jul"},
     {"round": "Octavos (R16)", "dates": "4 – 7 jul"},
     {"round": "Cuartos", "dates": "9 – 11 jul"},
     {"round": "Semifinales", "dates": "14 – 15 jul"},
     {"round": "Final", "dates": "19 jul · MetLife Stadium"},
 ]
+
+
+# ====================================================================
+# BRACKET — árbol completo R32 -> Final (estructura oficial 2026).
+# 'a'/'b' son código de equipo (R32) o referencia "W{n}"/"L{n}" = ganador/
+# perdedor del partido n. ``build_bracket`` resuelve los equipos y avanza a los
+# ganadores según los resultados (de los overrides en vivo / feed del torneo).
+# ====================================================================
+BRACKET = [
+    # Ronda de 32
+    {"m": 73, "round": "R32", "a": "RSA", "b": "CAN"},
+    {"m": 74, "round": "R32", "a": "GER", "b": "PAR"},
+    {"m": 75, "round": "R32", "a": "NED", "b": "MAR"},
+    {"m": 76, "round": "R32", "a": "BRA", "b": "JPN"},
+    {"m": 77, "round": "R32", "a": "FRA", "b": "SWE"},
+    {"m": 78, "round": "R32", "a": "CIV", "b": "NOR"},
+    {"m": 79, "round": "R32", "a": "MEX", "b": "ECU"},
+    {"m": 80, "round": "R32", "a": "ENG", "b": "COD"},
+    {"m": 81, "round": "R32", "a": "USA", "b": "BIH"},
+    {"m": 82, "round": "R32", "a": "BEL", "b": "SEN"},
+    {"m": 83, "round": "R32", "a": "POR", "b": "CRO"},
+    {"m": 84, "round": "R32", "a": "ESP", "b": "AUT"},
+    {"m": 85, "round": "R32", "a": "SUI", "b": "ALG"},
+    {"m": 86, "round": "R32", "a": "ARG", "b": "CPV"},
+    {"m": 87, "round": "R32", "a": "COL", "b": "GHA"},
+    {"m": 88, "round": "R32", "a": "AUS", "b": "EGY"},
+    # Octavos (R16)
+    {"m": 89, "round": "R16", "a": "W74", "b": "W77"},
+    {"m": 90, "round": "R16", "a": "W73", "b": "W75"},
+    {"m": 91, "round": "R16", "a": "W76", "b": "W78"},
+    {"m": 92, "round": "R16", "a": "W79", "b": "W80"},
+    {"m": 93, "round": "R16", "a": "W83", "b": "W84"},
+    {"m": 94, "round": "R16", "a": "W81", "b": "W82"},
+    {"m": 95, "round": "R16", "a": "W86", "b": "W88"},
+    {"m": 96, "round": "R16", "a": "W85", "b": "W87"},
+    # Cuartos
+    {"m": 97, "round": "QF", "a": "W89", "b": "W90"},
+    {"m": 98, "round": "QF", "a": "W93", "b": "W94"},
+    {"m": 99, "round": "QF", "a": "W91", "b": "W92"},
+    {"m": 100, "round": "QF", "a": "W95", "b": "W96"},
+    # Semifinales
+    {"m": 101, "round": "SF", "a": "W97", "b": "W98"},
+    {"m": 102, "round": "SF", "a": "W99", "b": "W100"},
+    # Final y 3er puesto
+    {"m": 104, "round": "F", "a": "W101", "b": "W102"},
+    {"m": 103, "round": "3P", "a": "L101", "b": "L102"},
+]
+
+ROUND_LABELS = {"R32": "Ronda de 32", "R16": "Octavos", "QF": "Cuartos",
+                "SF": "Semifinales", "F": "Final", "3P": "3.er puesto"}
+
+_BRACKET_BY_M = {b["m"]: b for b in BRACKET}
+
+
+def _team_brief(code):
+    t = TEAMS_BY_CODE.get(code)
+    return {"code": code, "name": t["name"], "iso": t.get("iso", "")} if t else None
+
+
+def build_bracket(results: dict) -> list:
+    """Resuelve el bracket con los resultados disponibles.
+
+    ``results``: dict "CODEA-CODEB" -> {"a": golesA, "b": golesB, "w": código
+    ganador} (en cualquier orden de claves). Devuelve cada partido con sus dos
+    equipos resueltos (o None si aún no se conocen) y el ganador si ya se jugó.
+    """
+    cache = {}
+
+    def result_for(ca, cb):
+        if not ca or not cb:
+            return None
+        return results.get(f"{ca}-{cb}") or results.get(f"{cb}-{ca}")
+
+    def resolve(m):
+        if m in cache:
+            return cache[m]
+        spec = _BRACKET_BY_M[m]
+        cache[m] = {"a": None, "b": None, "w": None, "l": None}  # evita recursión infinita
+
+        def side(ref):
+            if ref in TEAMS_BY_CODE:
+                return ref
+            kind, n = ref[0], int(ref[1:])
+            r = resolve(n)
+            return r["w"] if kind == "W" else r["l"]
+
+        ca, cb = side(spec["a"]), side(spec["b"])
+        res = result_for(ca, cb)
+        w = lcode = None
+        if res and ca and cb:
+            wcode = res.get("w")
+            if not wcode and res.get("a") is not None and res.get("b") is not None:
+                if res["a"] != res["b"]:
+                    wcode = ca if res["a"] > res["b"] else cb
+            if wcode in (ca, cb):
+                w = wcode
+                lcode = cb if wcode == ca else ca
+        cache[m] = {"a": ca, "b": cb, "w": w, "l": lcode, "res": res}
+        return cache[m]
+
+    out = []
+    for spec in BRACKET:
+        r = resolve(spec["m"])
+        score = None
+        if r.get("res") and r["res"].get("a") is not None:
+            score = f"{r['res']['a']}-{r['res']['b']}"
+        out.append({
+            "m": spec["m"],
+            "round": spec["round"],
+            "round_label": ROUND_LABELS[spec["round"]],
+            "a": _team_brief(r["a"]),
+            "b": _team_brief(r["b"]),
+            "winner": r["w"],
+            "score": score,
+        })
+    return out

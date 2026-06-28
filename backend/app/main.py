@@ -18,7 +18,7 @@ from .data.teams import TEAMS, TEAMS_BY_CODE
 from .data.referees import REFEREES, REFEREES_BY_ID
 from .data.tournament import (
     STANDINGS, FIXTURES, KNOCKOUT_DATES, form_elo_delta,
-    team_stake, motivation_for,
+    team_stake, motivation_for, build_bracket,
 )
 from .engine.simulate import simulate
 from .schemas import PredictRequest
@@ -122,6 +122,19 @@ def get_groups():
     for g in groups.values():
         g.sort(key=lambda r: (-r.get("pts", 0), -r.get("gd", 0)))
     return {g: groups[g] for g in sorted(groups)}
+
+
+@app.get("/api/bracket")
+def get_bracket():
+    """Bracket eliminatorio resuelto con los resultados disponibles."""
+    results = live_store.load().get("results", {})
+    matches = build_bracket(results)
+    rounds_order = ["R32", "R16", "QF", "SF", "F", "3P"]
+    by_round = {r: [] for r in rounds_order}
+    for m in matches:
+        by_round[m["round"]].append(m)
+    return {"rounds": [{"key": r, "label": by_round[r][0]["round_label"] if by_round[r] else r,
+                        "matches": by_round[r]} for r in rounds_order]}
 
 
 @app.get("/api/schedule")

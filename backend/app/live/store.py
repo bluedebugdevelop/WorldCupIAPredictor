@@ -21,7 +21,7 @@ from pathlib import Path
 _LOCK = threading.Lock()
 OVERRIDES_PATH = Path(__file__).resolve().parent.parent / "data" / "live_overrides.json"
 
-_EMPTY = {"updated": None, "appointments": {}, "referees": {}}
+_EMPTY = {"updated": None, "appointments": {}, "referees": {}, "results": {}}
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_KEY")

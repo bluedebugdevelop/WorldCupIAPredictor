@@ -34,6 +34,7 @@
   <nav class="tabs">
     <button class="tab active" data-tab="predictor"><i data-lucide="sparkles"></i> Predictor</button>
     <button class="tab" data-tab="grupos"><i data-lucide="bar-chart-3"></i> Grupos</button>
+    <button class="tab" data-tab="bracket"><i data-lucide="git-fork"></i> Bracket</button>
     <button class="tab" data-tab="calendario"><i data-lucide="calendar-days"></i> Calendario</button>
   </nav>
 
@@ -87,6 +88,12 @@
   <main class="view hidden" id="view-grupos">
     <div class="section-head"><h2>Fase de grupos · clasificaciones reales</h2><p>Top 2 de cada grupo + 8 mejores terceros pasan a la Ronda de 32.</p></div>
     <div class="groups-grid" id="groupsGrid"></div>
+  </main>
+
+  <!-- ============ BRACKET ============ -->
+  <main class="view hidden" id="view-bracket">
+    <div class="section-head"><h2>Bracket · fase final</h2><p>Cruces confirmados de la Ronda de 32. Los ganadores avanzan automáticamente según los resultados del Mundial.</p></div>
+    <div class="bracket-scroll"><div class="bracket" id="bracket"></div></div>
   </main>
 
   <!-- ============ CALENDARIO ============ -->

@@ -38,6 +38,7 @@ async function boot() {
 
   loadGroups();
   loadSchedule();
+  loadBracket();
   loadStatus();
 
   $("refreshBtn").addEventListener("click", async () => {
@@ -45,7 +46,7 @@ async function boot() {
     btn.disabled = true; btn.innerHTML = `<i data-lucide="loader"></i> Actualizando…`; icons();
     try {
       await fetch(`${API}/api/refresh`, { method: "POST" });
-      await Promise.all([loadSchedule(), loadStatus(), fillRefSelectKeep()]);
+      await Promise.all([loadSchedule(), loadBracket(), loadGroups(), loadStatus(), fillRefSelectKeep()]);
     } catch (e) { /* noop */ }
     btn.disabled = false; btn.innerHTML = `<i data-lucide="refresh-cw"></i> Actualizar designaciones`; icons();
   });
@@ -294,6 +295,29 @@ async function loadSchedule() {
       updateFlags(); updateRefMeta(); switchTab("predictor"); run();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }));
+  icons();
+}
+
+/* ---------- Bracket ---------- */
+async function loadBracket() {
+  const data = await fetch(`${API}/api/bracket`).then((r) => r.json());
+  const bteam = (t, isWin, score) => {
+    if (!t) return `<div class="bk-team tbd"><span class="bk-name">Por definir</span></div>`;
+    return `<div class="bk-team ${isWin ? "win" : ""}">
+      <span class="bk-flag ${fi(t.iso)}"></span><span class="bk-name">${t.name}</span>
+      <span class="bk-score">${score ?? ""}</span></div>`;
+  };
+  $("bracket").innerHTML = data.rounds.map((rd) => {
+    const matches = rd.matches.map((m) => {
+      const sa = m.score ? m.score.split("-")[0] : null;
+      const sb = m.score ? m.score.split("-")[1] : null;
+      return `<div class="bk-match">
+        ${bteam(m.a, m.winner && m.a && m.winner === m.a.code, sa)}
+        ${bteam(m.b, m.winner && m.b && m.winner === m.b.code, sb)}
+      </div>`;
+    }).join("");
+    return `<div class="bk-col bk-${rd.key}"><div class="bk-col-head">${rd.label}</div>${matches}</div>`;
+  }).join("");
   icons();
 }
 

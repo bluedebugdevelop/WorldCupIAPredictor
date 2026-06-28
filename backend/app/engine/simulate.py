@@ -98,9 +98,11 @@ def simulate(team_a: dict, team_b: dict, referee: dict,
     return {
         "teams": {
             "a": {"code": team_a["code"], "name": team_a["name"], "flag": team_a["flag"],
+                  "iso": team_a.get("iso", ""),
                   "elo": round(team_a["elo"]), "elo_base": round(team_a.get("elo_base", team_a["elo"])),
                   "form_delta": team_a.get("form_delta", 0), "stake": team_a.get("stake")},
             "b": {"code": team_b["code"], "name": team_b["name"], "flag": team_b["flag"],
+                  "iso": team_b.get("iso", ""),
                   "elo": round(team_b["elo"]), "elo_base": round(team_b.get("elo_base", team_b["elo"])),
                   "form_delta": team_b.get("form_delta", 0), "stake": team_b.get("stake")},
         },

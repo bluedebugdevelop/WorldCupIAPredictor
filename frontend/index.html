@@ -7,14 +7,22 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.2.3/css/flag-icons.min.css" />
   <link rel="stylesheet" href="styles.css" />
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
   <div class="bg-grid"></div>
 
   <header class="topbar">
     <div class="brand">
-      <span class="logo">⚽</span>
+      <span class="logo">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9.5"></circle>
+          <path d="M12 7.2l4 2.9-1.5 4.7h-5L8 10.1z"></path>
+          <path d="M12 2.5v4.7M21 9.8l-4.5 3.3M16.5 21l-1.6-5M9.1 16l-1.6 5M3 9.8l4.5 3.3"></path>
+        </svg>
+      </span>
       <div>
         <h1>WorldCup<span class="accent">IA</span>Predictor</h1>
         <p class="tagline">Mundial 2026 · datos reales del torneo · Poisson + Monte&nbsp;Carlo</p>
@@ -24,9 +32,9 @@
   </header>
 
   <nav class="tabs">
-    <button class="tab active" data-tab="predictor">🔮 Predictor</button>
-    <button class="tab" data-tab="grupos">📊 Grupos</button>
-    <button class="tab" data-tab="calendario">📅 Calendario</button>
+    <button class="tab active" data-tab="predictor"><i data-lucide="sparkles"></i> Predictor</button>
+    <button class="tab" data-tab="grupos"><i data-lucide="bar-chart-3"></i> Grupos</button>
+    <button class="tab" data-tab="calendario"><i data-lucide="calendar-days"></i> Calendario</button>
   </nav>
 
   <!-- ============ PREDICTOR ============ -->
@@ -36,18 +44,18 @@
       <div class="vs-block">
         <div class="team-select">
           <label>Selección A</label>
-          <div class="select-wrap"><span class="flag" id="flagA">🏳️</span><select id="teamA"></select></div>
+          <div class="select-wrap"><span class="flag-el" id="flagA"></span><select id="teamA"></select><i data-lucide="chevron-down" class="caret"></i></div>
         </div>
         <div class="vs">VS</div>
         <div class="team-select">
           <label>Selección B</label>
-          <div class="select-wrap"><span class="flag" id="flagB">🏳️</span><select id="teamB"></select></div>
+          <div class="select-wrap"><span class="flag-el" id="flagB"></span><select id="teamB"></select><i data-lucide="chevron-down" class="caret"></i></div>
         </div>
       </div>
 
       <div class="field">
         <label>Árbitro</label>
-        <div class="select-wrap"><span class="flag">🧑‍⚖️</span><select id="referee"></select></div>
+        <div class="select-wrap"><i data-lucide="user-round" class="lead-ic"></i><select id="referee"></select><i data-lucide="chevron-down" class="caret"></i></div>
         <p class="ref-meta" id="refMeta"></p>
       </div>
 
@@ -63,14 +71,14 @@
       </div>
 
       <button id="runBtn" class="run-btn"><span class="btn-text">Ejecutar predicción</span></button>
-      <p class="disclaimer">Combina Elo pre-torneo + forma real (puntos y dif. de goles) + perfil del árbitro. Fines analíticos/educativos.</p>
+      <p class="disclaimer">Combina Elo previo + forma real (alto peso) + intereses + perfil del árbitro, calibrado a las estadísticas del Mundial 2026. Fines analíticos/educativos.</p>
     </aside>
 
     <section class="results" id="results">
       <div class="empty-state" id="emptyState">
-        <div class="empty-icon">📊</div>
+        <i data-lucide="line-chart" class="empty-icon"></i>
         <h3>Configura un partido y ejecuta la predicción</h3>
-        <p>El motor simulará miles de partidos teniendo en cuenta el rendimiento real de cada selección en el Mundial 2026.</p>
+        <p>El motor simula miles de partidos dando mucho peso al rendimiento real de cada selección en el Mundial 2026. Puedes predecir cualquier cruce, esté por jugarse, en juego o ya disputado.</p>
       </div>
     </section>
   </main>
@@ -85,10 +93,10 @@
   <main class="view hidden" id="view-calendario">
     <div class="section-head">
       <h2>Calendario · próximos partidos</h2>
-      <p>Hora de España, orden cronológico. Última jornada de grupos (hoy) y Ronda de 32. Pulsa “Predecir” en cualquier cruce definido.</p>
+      <p>Hora de España, orden cronológico. Última jornada de grupos y Ronda de 32. Predice cualquier cruce definido, aunque ya se esté jugando o haya terminado.</p>
       <div class="sync-bar">
         <span class="sync-status" id="syncStatus">Sincronizando designaciones…</span>
-        <button class="sync-btn" id="refreshBtn">↻ Actualizar designaciones</button>
+        <button class="sync-btn" id="refreshBtn"><i data-lucide="refresh-cw"></i> Actualizar designaciones</button>
       </div>
     </div>
     <div class="rounds-strip" id="roundsStrip"></div>
@@ -96,7 +104,7 @@
   </main>
 
   <footer class="footer">
-    <span>WorldCupIAPredictor</span> · Poisson bivariante + Monte Carlo · grupos, calendario y forma reales del Mundial 2026
+    <span>WorldCupIAPredictor</span> · Poisson bivariante + Monte Carlo · calibrado con datos reales del Mundial 2026
   </footer>
 
   <script src="app.js"></script>

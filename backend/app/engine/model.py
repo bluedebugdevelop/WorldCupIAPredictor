@@ -15,16 +15,19 @@ import math
 from dataclasses import dataclass
 
 from ..data.teams import team_strength
-from ..data.referees import AVG_YELLOWS, AVG_REDS, AVG_PENALTIES
 
-# --- Constantes calibradas para fútbol internacional ---
-BASE_GOALS = 1.35          # goles medios por equipo y partido
+# --- Constantes CALIBRADAS al Mundial 2026 (datos reales del torneo) ---
+# El torneo va muy goleador: ~3.12 goles/partido (vs 2.56 en 2022) y se pitan
+# menos faltas, con menos tarjetas. Los córners se ajustan a las nuevas reglas.
+BASE_GOALS = 1.56          # goles medios por equipo (3.12/partido en este Mundial)
 GOAL_SPREAD = 1.25         # sensibilidad de los goles a la diferencia de fuerza
 HOME_ADVANTAGE = 1.18      # multiplicador de ventaja de campo (sede no neutral)
 
-BASE_CORNERS = 10.6        # córners totales medios por partido
+BASE_CORNERS = 9.6         # córners totales/partido (nuevas reglas de saque)
 CORNER_DOMINANCE = 0.9     # cómo se reparten los córners según el ataque
 
+# Menos faltas -> menos tarjetas que la media histórica de los árbitros.
+TOURNAMENT_CARD_FACTOR = 0.78
 BASE_YELLOWS_TENSION = 1.0
 TENSION_MAX_BONUS = 0.30   # los partidos igualados generan más tarjetas
 KNOCKOUT_BONUS = 0.12      # plus de tensión en eliminatorias
@@ -89,19 +92,16 @@ def compute_lambdas(team_a: dict, team_b: dict, referee: dict,
     lam_corners_a = total_corners * share_a
     lam_corners_b = total_corners * (1.0 - share_a)
 
-    # --- Tarjetas: dominadas por el árbitro y moduladas por la tensión ---
-    ref_yellow_factor = referee["yellows"] / AVG_YELLOWS
-    total_yellows = AVG_YELLOWS * ref_yellow_factor * tension
+    # --- Tarjetas: parten de la media del árbitro, escaladas al entorno de
+    #     pocas faltas del Mundial 2026, y moduladas por la tensión del partido.
+    total_yellows = referee["yellows"] * tension * TOURNAMENT_CARD_FACTOR
     # el equipo más débil (más a la defensiva) tiende a recibir algo más
     disc_share_a = 0.5 - 0.12 * (sa - sb)
     lam_yellows_a = total_yellows * disc_share_a
     lam_yellows_b = total_yellows * (1.0 - disc_share_a)
 
-    ref_red_factor = referee["reds"] / AVG_REDS
-    lam_reds = AVG_REDS * ref_red_factor * tension
-
-    ref_pen_factor = referee["penalties"] / AVG_PENALTIES
-    lam_penalties = AVG_PENALTIES * ref_pen_factor
+    lam_reds = referee["reds"] * tension * TOURNAMENT_CARD_FACTOR
+    lam_penalties = referee["penalties"]
 
     return MatchLambdas(
         goals_a=lam_goals_a, goals_b=lam_goals_b,

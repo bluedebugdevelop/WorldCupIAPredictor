@@ -115,7 +115,8 @@ def get_groups():
     groups: dict[str, list] = {}
     for t in TEAMS:
         row = dict(STANDINGS.get(t["code"], {}))
-        row.update({"code": t["code"], "name": t["name"], "flag": t["flag"], "elo": t["elo"]})
+        row.update({"code": t["code"], "name": t["name"], "flag": t["flag"],
+                    "iso": t.get("iso", ""), "elo": t["elo"]})
         row["form"] = form_elo_delta(t["code"])
         groups.setdefault(t["group"], []).append(row)
     for g in groups.values():
@@ -130,7 +131,8 @@ def get_schedule():
         t = TEAMS_BY_CODE.get(side)
         if not t:
             return {"label": side}
-        return {"code": t["code"], "name": t["name"], "flag": t["flag"], "stake": team_stake(t["code"])}
+        return {"code": t["code"], "name": t["name"], "flag": t["flag"],
+                "iso": t.get("iso", ""), "stake": team_stake(t["code"])}
 
     def ref_info(rid):
         r = ref_by_id(rid)

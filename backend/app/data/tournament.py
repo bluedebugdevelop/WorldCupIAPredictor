@@ -79,17 +79,19 @@ STANDINGS = {
     "PAN": {"pld": 2, "w": 0, "d": 0, "l": 2, "gf": 0, "ga": 2, "gd": -2, "pts": 0},
 }
 
-FORM_CAP = 120.0
+# La forma EN el Mundial pesa mucho: coeficientes altos y tope amplio para que
+# el rendimiento real en el torneo domine sobre el nivel previo (Elo base).
+FORM_CAP = 230.0
 
 
 def form_elo_delta(code: str) -> float:
-    """Ajuste de Elo según el rendimiento del equipo EN el torneo."""
+    """Ajuste de Elo según el rendimiento del equipo EN el torneo (peso alto)."""
     s = STANDINGS.get(code)
     if not s or s["pld"] == 0:
         return 0.0
     gdpg = s["gd"] / s["pld"]
     ppg = s["pts"] / s["pld"]
-    delta = 24.0 * gdpg + 16.0 * (ppg - 1.5)
+    delta = 40.0 * gdpg + 28.0 * (ppg - 1.5)
     return round(max(-FORM_CAP, min(FORM_CAP, delta)), 1)
 
 

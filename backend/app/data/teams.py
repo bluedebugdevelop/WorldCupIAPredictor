@@ -75,6 +75,20 @@ TEAMS = [
     {"code": "PAN", "name": "Panamá",            "conf": "CONCACAF", "elo": 1660, "flag": "🇵🇦", "group": "L"},
 ]
 
+# Código ISO 3166-1 alpha-2 para la librería flag-icons (banderas reales).
+_ISO = {
+    "MEX": "mx", "RSA": "za", "KOR": "kr", "CZE": "cz", "SUI": "ch", "CAN": "ca",
+    "BIH": "ba", "QAT": "qa", "BRA": "br", "MAR": "ma", "SCO": "gb-sct", "HAI": "ht",
+    "USA": "us", "AUS": "au", "PAR": "py", "TUR": "tr", "GER": "de", "CIV": "ci",
+    "ECU": "ec", "CUW": "cw", "NED": "nl", "JPN": "jp", "SWE": "se", "TUN": "tn",
+    "BEL": "be", "EGY": "eg", "IRN": "ir", "NZL": "nz", "ESP": "es", "CPV": "cv",
+    "URU": "uy", "SAU": "sa", "FRA": "fr", "NOR": "no", "SEN": "sn", "IRQ": "iq",
+    "ARG": "ar", "AUT": "at", "ALG": "dz", "JOR": "jo", "COL": "co", "POR": "pt",
+    "COD": "cd", "UZB": "uz", "ENG": "gb-eng", "GHA": "gh", "CRO": "hr", "PAN": "pa",
+}
+for _t in TEAMS:
+    _t["iso"] = _ISO.get(_t["code"], "")
+
 TEAMS_BY_CODE = {t["code"]: t for t in TEAMS}
 
 ELO_MIN = 1450.0

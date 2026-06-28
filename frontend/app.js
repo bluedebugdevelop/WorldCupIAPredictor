@@ -3,6 +3,8 @@
 const API = "";
 const $ = (id) => document.getElementById(id);
 const pct = (x) => `${(x * 100).toFixed(1)}%`;
+const icons = () => { if (window.lucide) lucide.createIcons(); };
+const fi = (iso) => (iso ? `fi fi-${iso}` : "");
 
 let TEAMS = [], REFEREES = [];
 
@@ -14,7 +16,7 @@ async function boot() {
     ]);
   } catch (e) {
     $("emptyState").innerHTML =
-      `<div class="empty-icon">⚠️</div><h3>No se pudo conectar con el motor</h3><p>Arranca el backend con <code>uvicorn app.main:app</code></p>`;
+      `<h3>No se pudo conectar con el motor</h3><p>Arranca el backend con <code>uvicorn app.main:app</code></p>`;
     return;
   }
 
@@ -40,13 +42,15 @@ async function boot() {
 
   $("refreshBtn").addEventListener("click", async () => {
     const btn = $("refreshBtn");
-    btn.disabled = true; btn.textContent = "↻ Actualizando…";
+    btn.disabled = true; btn.innerHTML = `<i data-lucide="loader"></i> Actualizando…`; icons();
     try {
       await fetch(`${API}/api/refresh`, { method: "POST" });
       await Promise.all([loadSchedule(), loadStatus(), fillRefSelectKeep()]);
     } catch (e) { /* noop */ }
-    btn.disabled = false; btn.textContent = "↻ Actualizar designaciones";
+    btn.disabled = false; btn.innerHTML = `<i data-lucide="refresh-cw"></i> Actualizar designaciones`; icons();
   });
+
+  icons();
 }
 
 async function loadStatus() {
@@ -55,7 +59,7 @@ async function loadStatus() {
     const el = $("syncStatus");
     if (s.updated) {
       const d = new Date(s.updated).toLocaleString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-      el.innerHTML = `🟢 Última actualización: <strong>${d}</strong> · ${s.appointments} designaciones`;
+      el.innerHTML = `Última actualización: <strong>${d}</strong> · ${s.appointments} designaciones`;
     } else {
       el.textContent = "Sin sincronizar todavía";
     }
@@ -87,15 +91,16 @@ function fillRefSelect() {
   $("referee").innerHTML = REFEREES.map((r) => `<option value="${r.id}">${r.name} (${r.country})${r.estimated ? " ·est" : ""}</option>`).join("");
 }
 const teamByCode = (c) => TEAMS.find((t) => t.code === c);
-function updateFlags() {
-  $("flagA").textContent = teamByCode($("teamA").value)?.flag || "🏳️";
-  $("flagB").textContent = teamByCode($("teamB").value)?.flag || "🏳️";
+function setFlag(id, code) {
+  const t = teamByCode(code);
+  $(id).className = `flag-el ${fi(t?.iso)}`;
 }
+function updateFlags() { setFlag("flagA", $("teamA").value); setFlag("flagB", $("teamB").value); }
 function updateRefMeta() {
   const r = REFEREES.find((x) => x.id === $("referee").value);
   if (!r) return;
   const extra = r.matches ? ` · ${r.fouls} faltas/p · ${r.matches} partidos` : (r.estimated ? " · datos estimados" : "");
-  $("refMeta").textContent = `${r.style} · ${r.yellows}🟨 ${r.reds}🟥 ${r.penalties} pen/p${extra}`;
+  $("refMeta").textContent = `${r.style} · ${r.yellows} amar. ${r.reds} rojas ${r.penalties} pen/p${extra}`;
 }
 
 async function run() {
@@ -122,14 +127,20 @@ async function run() {
 }
 
 function flashError(msg) {
-  $("results").innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><h3>${msg}</h3></div>`;
+  $("results").innerHTML = `<div class="empty-state"><i data-lucide="alert-triangle" class="empty-icon"></i><h3>${msg}</h3></div>`;
+  icons();
 }
 
-function formChip(d) {
-  if (!d) return "";
-  const cls = d > 0 ? "up" : "dn";
-  return `<span class="form-chip ${cls}">forma ${d > 0 ? "+" : ""}${d}</span>`;
+function stakeClass(s) {
+  if (!s) return "";
+  if (s.startsWith("Necesita ganar") || s.startsWith("Gana para")) return "st-win";
+  if (s.startsWith("Le vale el empate") || s.startsWith("Empate para")) return "st-draw";
+  if (s === "Eliminado") return "st-out";
+  if (s === "Clasificado" || s === "1º asegurado" || s.startsWith("Clasificado")) return "st-ok";
+  return "st-dep";
 }
+const stakeBadge = (s) => s ? `<span class="stake ${stakeClass(s)}">${s}</span>` : "";
+const formChip = (d) => d ? `<span class="form-chip ${d > 0 ? "up" : "dn"}">forma ${d > 0 ? "+" : ""}${d}</span>` : "";
 
 function render(d) {
   const a = d.teams.a, b = d.teams.b, o = d.outcome, g = d.goals, c = d.corners, k = d.cards;
@@ -145,9 +156,9 @@ function render(d) {
     <div class="cards-grid">
       <div class="card matchup">
         <div class="matchup-teams">
-          <div class="mt-side"><span class="mt-flag">${a.flag}</span><span class="mt-name">${a.name}</span><span class="mt-elo">Elo ${a.elo}</span>${formChip(a.form_delta)}${stakeBadge(a.stake)}</div>
+          <div class="mt-side"><span class="mt-flag ${fi(a.iso)}"></span><span class="mt-name">${a.name}</span><span class="mt-elo">Elo ${a.elo}</span>${formChip(a.form_delta)}${stakeBadge(a.stake)}</div>
           <div class="mt-vs">VS<br/><span style="font-size:11px">${d.referee.name}</span></div>
-          <div class="mt-side"><span class="mt-flag">${b.flag}</span><span class="mt-name">${b.name}</span><span class="mt-elo">Elo ${b.elo}</span>${formChip(b.form_delta)}${stakeBadge(b.stake)}</div>
+          <div class="mt-side"><span class="mt-flag ${fi(b.iso)}"></span><span class="mt-name">${b.name}</span><span class="mt-elo">Elo ${b.elo}</span>${formChip(b.form_delta)}${stakeBadge(b.stake)}</div>
         </div>
         <div class="prob-bar">
           <div class="prob-seg seg-a" style="width:${o.a_win * 100}%">${o.a_win > 0.07 ? pct(o.a_win) : ""}</div>
@@ -182,8 +193,8 @@ function render(d) {
         <div class="card-head"><h3>Impacto del árbitro</h3><span class="card-tag">tarjetas & penaltis</span></div>
         <span class="ref-style-tag">${d.referee.style}</span>
         <div class="ref-name">${d.referee.name}</div>
-        <div class="ref-sub">${d.referee.country}${d.referee.matches ? ` · ${d.referee.matches} partidos dirigidos` : ""} · histórico ${d.referee.yellows}🟨 ${d.referee.reds}🟥${d.referee.fouls ? ` · ${d.referee.fouls} faltas/p` : ""} · tensión ${k.tension}</div>
-        <div class="metrics"><div class="metric warn"><div class="big">${k.yellows_total}</div><div class="lbl">🟨 amarillas totales</div></div><div class="metric danger"><div class="big">${pct(k.red_prob)}</div><div class="lbl">🟥 prob. de roja</div></div></div>
+        <div class="ref-sub">${d.referee.country}${d.referee.matches ? ` · ${d.referee.matches} partidos` : ""} · histórico ${d.referee.yellows} amar.${d.referee.fouls ? ` · ${d.referee.fouls} faltas/p` : ""} · tensión ${k.tension}</div>
+        <div class="metrics"><div class="metric warn"><div class="big">${k.yellows_total}</div><div class="lbl"><span class="card-sq y"></span> amarillas totales</div></div><div class="metric danger"><div class="big">${pct(k.red_prob)}</div><div class="lbl"><span class="card-sq r"></span> prob. de roja</div></div></div>
         <div class="stat-row"><span class="stat-label">Amarillas ${a.name}</span><span class="stat-val">${k.yellows_a}</span></div>
         <div class="stat-row"><span class="stat-label">Amarillas ${b.name}</span><span class="stat-val">${k.yellows_b}</span></div>
         <div class="stat-row"><span class="stat-label">Más de 4.5 tarjetas</span><span class="stat-val">${pct(k.over_45)}</span></div>
@@ -195,15 +206,16 @@ function render(d) {
       <div class="card ${d.knockout ? "span6" : "span12"}">
         <div class="card-head"><h3>Veredicto del modelo</h3><span class="card-tag">resumen</span></div>
         <p style="font-size:14.5px;line-height:1.7;color:var(--text)">
-          El modelo favorece a <strong style="color:var(--accent)">${favored.flag} ${favored.name}</strong>
+          El modelo favorece a <strong style="color:var(--accent)">${favored.name}</strong>
           (${pct(Math.max(o.a_win, o.b_win))} de victoria), marcador más probable <strong>${g.top_scores[0].score}</strong>
           y <strong>${(g.xg_a + g.xg_b).toFixed(1)} goles</strong> esperados.
           Con ${d.referee.name} se proyectan <strong>${k.yellows_total} tarjetas</strong> y un ${pct(k.pen_prob)} de penalti.
-          ${(a.form_delta || b.form_delta) ? `Incluye la forma real en el Mundial (${a.name} ${a.form_delta >= 0 ? "+" : ""}${a.form_delta}, ${b.name} ${b.form_delta >= 0 ? "+" : ""}${b.form_delta} Elo).` : ""}
+          ${(a.form_delta || b.form_delta) ? `Pondera la forma real en el Mundial (${a.name} ${a.form_delta >= 0 ? "+" : ""}${a.form_delta}, ${b.name} ${b.form_delta >= 0 ? "+" : ""}${b.form_delta} Elo).` : ""}
           ${(a.stake || b.stake) ? `Intereses: ${a.name} «${a.stake || "—"}», ${b.name} «${b.stake || "—"}».` : ""}
         </p>
       </div>
     </div>`;
+  icons();
 }
 
 const scoreRow = (s, max) => `<div class="score-row"><span class="score-val">${s.score}</span><div class="score-bar"><div class="score-fill" style="width:${(s.prob / max) * 100}%"></div></div><span class="score-pct">${pct(s.prob)}</span></div>`;
@@ -219,7 +231,7 @@ async function loadGroups() {
       const fv = r.form > 0 ? `+${r.form}` : `${r.form}`;
       return `<tr class="${cls}">
         <td class="pos">${i + 1}</td>
-        <td class="team"><span class="gflag">${r.flag}</span>${r.name}</td>
+        <td class="team"><span class="gflag flag-cell ${fi(r.iso)}"></span>${r.name}</td>
         <td>${r.pld ?? "-"}</td><td>${r.w ?? "-"}</td><td>${r.d ?? "-"}</td><td>${r.l ?? "-"}</td>
         <td>${r.gd > 0 ? "+" + r.gd : (r.gd ?? "-")}</td>
         <td class="pts">${r.pts ?? "-"}</td>
@@ -233,17 +245,6 @@ async function loadGroups() {
       </table></div>`;
   }).join("");
 }
-
-/* ---------- Stakes (intereses) ---------- */
-function stakeClass(s) {
-  if (!s) return "";
-  if (s.startsWith("Necesita ganar") || s.startsWith("Gana para")) return "st-win";
-  if (s.startsWith("Le vale el empate") || s.startsWith("Empate para")) return "st-draw";
-  if (s === "Eliminado") return "st-out";
-  if (s === "Clasificado" || s === "1º asegurado" || s.startsWith("Clasificado")) return "st-ok";
-  return "st-dep";
-}
-const stakeBadge = (s) => s ? `<span class="stake ${stakeClass(s)}">${s}</span>` : "";
 
 /* ---------- Calendario ---------- */
 let SCHEDULE = [];
@@ -259,24 +260,25 @@ async function loadSchedule() {
     weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
   });
   const side = (s, right) => {
-    const inner = s.code
-      ? (right ? `<span>${s.name}${stakeBadge(s.stake)}</span><span class="fxflag">${s.flag}</span>`
-               : `<span class="fxflag">${s.flag}</span><span>${s.name}${stakeBadge(s.stake)}</span>`)
-      : `<span>${s.label}</span>`;
+    const flag = s.code ? `<span class="fxflag ${fi(s.iso)}"></span>` : "";
+    const name = s.code ? `<span>${s.name}${stakeBadge(s.stake)}</span>` : `<span>${s.label}</span>`;
+    const inner = right ? `${name}${flag}` : `${flag}${name}`;
     return `<div class="fx-side ${right ? "right" : ""} ${s.code ? "" : "tbd"}">${inner}</div>`;
   };
 
   $("fixtures").innerHTML = SCHEDULE.map((f, i) => {
-    const past = new Date(f.utc).getTime() < now;
-    const isKO = f.phase.startsWith("Ronda");
+    const t = new Date(f.utc).getTime();
+    const started = t < now;
+    const live = started && (now - t) < 2 * 3600 * 1000;
+    const statusTxt = live ? " · en juego" : (started ? " · jugado" : "");
     return `
-      <div class="fixture ${past ? "past" : ""}">
-        <div class="fx-meta"><span class="fx-num">${f.phase}</span><span>${fmt(f.utc)}${past ? " · jugado" : ""}</span></div>
+      <div class="fixture ${started ? "past" : ""}">
+        <div class="fx-meta"><span class="fx-num">${f.phase}</span><span>${fmt(f.utc)}<span class="played">${statusTxt}</span></span></div>
         <div class="fx-teams">${side(f.a, false)}<span class="fx-vs">VS</span>${side(f.b, true)}</div>
-        <div class="fx-venue">📍 ${f.venue}</div>
-        ${f.referee ? `<div class="fx-ref">🧑‍⚖️ ${f.referee.name} <span>(${f.referee.country} · ${f.referee.style}${f.referee.estimated ? " · est." : ""})</span></div>` : `<div class="fx-ref tbd-ref"><span>🧑‍⚖️ árbitro por designar</span></div>`}
+        <div class="fx-venue"><i data-lucide="map-pin"></i> ${f.venue}</div>
+        ${f.referee ? `<div class="fx-ref"><i data-lucide="user-round"></i> ${f.referee.name} <span>(${f.referee.country} · ${f.referee.style}${f.referee.estimated ? " · est." : ""})</span></div>` : `<div class="fx-ref tbd-ref"><i data-lucide="user-round"></i> <span>árbitro por designar</span></div>`}
         <button class="fx-predict" ${f.playable ? `data-i="${i}"` : "disabled"}>
-          ${f.playable ? "🔮 Predecir este partido" : "Rival por determinar"}
+          ${f.playable ? '<i data-lucide="sparkles"></i> Predecir este partido' : "Rival por determinar"}
         </button>
       </div>`;
   }).join("");
@@ -292,6 +294,7 @@ async function loadSchedule() {
       updateFlags(); updateRefMeta(); switchTab("predictor"); run();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }));
+  icons();
 }
 
 boot();

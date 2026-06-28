@@ -133,6 +133,10 @@ def simulate(team_a: dict, team_b: dict, referee: dict,
             "over_95": round(corners_over_95, 4),
             "over_105": round(corners_over_105, 4),
         },
+        "possession": {
+            "a": round(lam.possession_a * 100),
+            "b": round((1 - lam.possession_a) * 100),
+        },
         "cards": {
             "yellows_a": round(float(np.mean(ya)), 2),
             "yellows_b": round(float(np.mean(yb)), 2),

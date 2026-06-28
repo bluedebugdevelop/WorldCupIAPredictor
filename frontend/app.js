@@ -167,6 +167,8 @@ function render(d) {
           <div class="prob-seg seg-b" style="width:${o.b_win * 100}%">${o.b_win > 0.07 ? pct(o.b_win) : ""}</div>
         </div>
         <div class="prob-legend"><span><strong>${a.name}</strong> gana</span><span><strong>Empate</strong></span><span><strong>${b.name}</strong> gana</span></div>
+        <div class="poss-row"><span class="poss-pct">${d.possession.a}%</span><div class="poss-bar"><div class="poss-fill" style="width:${d.possession.a}%"></div></div><span class="poss-pct">${d.possession.b}%</span></div>
+        <div class="poss-label"><i data-lucide="circle-dot"></i> Posesión estimada · quién tendrá más el balón</div>
       </div>
 
       <div class="card span6">
